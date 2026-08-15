@@ -1,26 +1,3 @@
-/*
-
-  This file provides the prototypes data layer.
-
-  The final app will use repos and Entity Framework Core to communicate
-  with the db. 
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 {
   "branches": [
     {
