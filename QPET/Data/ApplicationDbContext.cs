@@ -107,6 +107,109 @@ namespace QPET.Data
             builder.Entity<EnquiryStatus>()
                 .HasIndex(status => status.StatusName)
                 .IsUnique();
+
+            builder.Entity<Branch>().HasData(
+    new Branch
+    {
+        BranchId = 1,
+        BranchName = "Pietermaritzburg",
+        PhoneNumber = "000 000 0000",
+        EmailAddress = "pietermaritzburg@qpet.co.za",
+        City = "Pietermaritzburg",
+        Province = "KwaZulu-Natal"
+    },
+    new Branch
+    {
+        BranchId = 2,
+        BranchName = "Johannesburg",
+        PhoneNumber = "000 000 0000",
+        EmailAddress = "johannesburg@qpet.co.za",
+        City = "Johannesburg",
+        Province = "Gauteng"
+    },
+    new Branch
+    {
+        BranchId = 3,
+        BranchName = "Cape Town",
+        PhoneNumber = "000 000 0000",
+        EmailAddress = "capetown@qpet.co.za",
+        City = "Cape Town",
+        Province = "Western Cape"
+    });
+
+            builder.Entity<Category>().HasData(
+                new Category
+                {
+                    CategoryId = 1,
+                    CategoryName = "Bottles",
+                    Description = "PET bottle packaging solutions."
+                },
+                new Category
+                {
+                    CategoryId = 2,
+                    CategoryName = "Jars",
+                    Description = "PET jar packaging solutions."
+                },
+                new Category
+                {
+                    CategoryId = 3,
+                    CategoryName = "Preforms",
+                    Description = "PET preforms for packaging manufacturing."
+                });
+
+            builder.Entity<SubCategory>().HasData(
+                new SubCategory
+                {
+                    SubCategoryId = 1,
+                    CategoryId = 1,
+                    SubCategoryName = "Water Bottles"
+                },
+                new SubCategory
+                {
+                    SubCategoryId = 2,
+                    CategoryId = 1,
+                    SubCategoryName = "Juice Bottles"
+                },
+                new SubCategory
+                {
+                    SubCategoryId = 3,
+                    CategoryId = 1,
+                    SubCategoryName = "Beverage Bottles"
+                },
+                new SubCategory
+                {
+                    SubCategoryId = 4,
+                    CategoryId = 2,
+                    SubCategoryName = "Food Jars"
+                },
+                new SubCategory
+                {
+                    SubCategoryId = 5,
+                    CategoryId = 3,
+                    SubCategoryName = "Standard Preforms"
+                });
+
+            builder.Entity<EnquiryStatus>().HasData(
+                new EnquiryStatus
+                {
+                    EnquiryStatusId = 1,
+                    StatusName = "New"
+                },
+                new EnquiryStatus
+                {
+                    EnquiryStatusId = 2,
+                    StatusName = "In Progress"
+                },
+                new EnquiryStatus
+                {
+                    EnquiryStatusId = 3,
+                    StatusName = "Resolved"
+                },
+                new EnquiryStatus
+                {
+                    EnquiryStatusId = 4,
+                    StatusName = "Closed"
+                });
         }
     }
 }
