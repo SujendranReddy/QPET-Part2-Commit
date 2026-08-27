@@ -1,6 +1,4 @@
-﻿using QPET.Models;
-
-namespace QPET.Domain.Entities
+﻿namespace QPET.Domain.Entities
 {
     public class Customer
     {
@@ -12,12 +10,15 @@ namespace QPET.Domain.Entities
 
         public string PhoneNumber { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
         public ICollection<Enquiry> Enquiries { get; set; }
             = new List<Enquiry>();
 
-        public ICollection<Review> Reviews { get; set; }
-            = new List<Review>();
+        public void UpdateContactDetails(
+            string fullName,
+            string phoneNumber)
+        {
+            FullName = fullName;
+            PhoneNumber = phoneNumber;
+        }
     }
 }

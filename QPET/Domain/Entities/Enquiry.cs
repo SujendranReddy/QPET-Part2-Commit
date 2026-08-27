@@ -1,6 +1,4 @@
-﻿using QPET.Models;
-
-namespace QPET.Domain.Entities
+﻿namespace QPET.Domain.Entities
 {
     public class Enquiry
     {
@@ -10,23 +8,29 @@ namespace QPET.Domain.Entities
 
         public int BranchId { get; set; }
 
-        public int EnquiryStatusId { get; set; }
-
         public string Subject { get; set; } = string.Empty;
 
         public string Message { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
-        public DateTime? UpdatedAt { get; set; }
+        public EnquiryStatus Status { get; set; } = EnquiryStatus.New;
 
         public Customer Customer { get; set; } = null!;
 
         public Branch Branch { get; set; } = null!;
 
-        public EnquiryStatus EnquiryStatus { get; set; } = null!;
-
         public ICollection<EnquiryAttachment> Attachments { get; set; }
             = new List<EnquiryAttachment>();
+
+        public void AddAttachment(EnquiryAttachment attachment)
+        {
+            Attachments.Add(attachment);
+        }
+
+        public void UpdateStatus(EnquiryStatus status)
+        {
+            Status = status;
+        }
     }
 }
