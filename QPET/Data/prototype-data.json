@@ -269,10 +269,5 @@
       "reviewMessage": "Very helpful when answering our packaging questions.",
       "createdDate": "2026-08-12"
     }
-  ],
-  "adminUser": {
-    "emailAddress": "admin@qpet.co.za",
-    "password": "Admin123!",
-    "isActive": true
-  }
+  ]
 }
