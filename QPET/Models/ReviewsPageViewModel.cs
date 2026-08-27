@@ -2,13 +2,15 @@ namespace QPET.Models
 {
     public class ReviewsPageViewModel
     {
-        public List<Review> Reviews { get; set; } =
-            new List<Review>();
+        public List<QPET.Domain.Entities.Review> Reviews
+        { get; set; }
+            = new List<QPET.Domain.Entities.Review>();
 
-        public List<Branch> Branches { get; set; } =
-            new List<Branch>();
+        public List<QPET.Domain.Entities.Branch> Branches
+        { get; set; }
+            = new List<QPET.Domain.Entities.Branch>();
 
-        public ReviewViewModel Review { get; set; } =
-            new ReviewViewModel();
+        public ReviewViewModel Review { get; set; }
+            = new ReviewViewModel();
     }
 }

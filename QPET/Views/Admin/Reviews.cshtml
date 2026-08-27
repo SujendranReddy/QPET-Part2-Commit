@@ -1,5 +1,4 @@
-﻿@model IEnumerable<QPET.Models.Review>
-@using QPET.Models
+﻿@model List<QPET.Domain.Entities.Review>
 
 @{
     ViewData["Title"] = "Reviews";
@@ -7,9 +6,6 @@
     var reviews =
         Model.ToList();
 
-    var branches =
-        ViewBag.Branches as List<Branch>
-        ?? new List<Branch>();
 }
 
 
@@ -119,12 +115,7 @@
 
                         @foreach (var review in reviews)
                         {
-                            var branch =
-                            branches.FirstOrDefault(
-                            branch =>
-                            branch.BranchId ==
-                            review.BranchId
-                            );
+                            var branch = review.Branch;
 
 
                             var stars =
@@ -140,14 +131,7 @@
 
 
                             var displayDate =
-                            DateTime.TryParse(
-                            review.CreatedDate,
-                            out var parsedDate
-                            )
-                            ? parsedDate.ToString(
-                            "dd MMM yyyy"
-                            )
-                            : review.CreatedDate;
+                            review.CreatedDate.ToString("dd MMM yyyy");
 
 
                             <tr>

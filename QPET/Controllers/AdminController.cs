@@ -4,7 +4,6 @@ using QPET.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QPET.Models;
-using QPET.Services;
 using DomainEnquiry = QPET.Domain.Entities.Enquiry;
 using EnquiryStatus = QPET.Domain.Entities.EnquiryStatus;
 
@@ -13,10 +12,10 @@ namespace QPET.Controllers
     [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
+        private readonly IReviewService _reviewService;
         private readonly IFileStorageService _fileStorageService;
         private readonly IEnquiryService _enquiryService;
         private readonly IProductService _productService;
-        private readonly PrototypeDataService _dataService;
         private readonly UserManager<AdminUser> _userManager;
 
         private readonly SignInManager<AdminUser> _signInManager;
@@ -24,16 +23,16 @@ namespace QPET.Controllers
         public AdminController(
 
     IFileStorageService fileStorageService,
-    PrototypeDataService dataService,
+    IReviewService reviewService,
     IEnquiryService enquiryService,
     UserManager<AdminUser> userManager,
     IProductService productService,
     SignInManager<AdminUser> signInManager)
         {
+            _reviewService = reviewService;
             _fileStorageService = fileStorageService;
             _enquiryService = enquiryService;
             _productService = productService;
-            _dataService = dataService;
             _userManager = userManager;
             _signInManager = signInManager;
         }
@@ -141,7 +140,7 @@ namespace QPET.Controllers
                 await _enquiryService.GetAllAsync();
 
             var reviews =
-                _dataService.GetReviews();
+                await _reviewService.GetAllAsync();
 
             var recentEnquiries =
                 enquiries
@@ -598,48 +597,28 @@ namespace QPET.Controllers
         }
 
 
-        public IActionResult Reviews()
+        public async Task<IActionResult> Reviews()
         {
             var reviews =
-                _dataService
-                    .GetReviews()
-                    .OrderByDescending(
-                        review =>
-                            review.ReviewId
-                    )
-                    .ToList();
+                await _reviewService.GetAllAsync();
 
-
-            ViewBag.Branches =
-                _dataService
-                    .GetBranches();
-
-
-            return View(
-                reviews
-            );
+            return View(reviews);
         }
 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteReview(
-            int id)
+        public async Task<IActionResult> DeleteReview(int id)
         {
             var deleted =
-                _dataService
-                    .DeleteReview(id);
-
+                await _reviewService.DeleteAsync(id);
 
             TempData["ReviewMessage"] =
                 deleted
                     ? "Review deleted successfully."
                     : "The review could not be found.";
 
-
-            return RedirectToAction(
-                nameof(Reviews)
-            );
+            return RedirectToAction(nameof(Reviews));
         }
 
 
