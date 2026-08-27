@@ -5,12 +5,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QPET.Models;
 using QPET.Services;
+using DomainEnquiry = QPET.Domain.Entities.Enquiry;
+using EnquiryStatus = QPET.Domain.Entities.EnquiryStatus;
 
 namespace QPET.Controllers
 {
     [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
+        private readonly IFileStorageService _fileStorageService;
+        private readonly IEnquiryService _enquiryService;
         private readonly IProductService _productService;
         private readonly PrototypeDataService _dataService;
         private readonly UserManager<AdminUser> _userManager;
@@ -19,11 +23,15 @@ namespace QPET.Controllers
 
         public AdminController(
 
+    IFileStorageService fileStorageService,
     PrototypeDataService dataService,
+    IEnquiryService enquiryService,
     UserManager<AdminUser> userManager,
     IProductService productService,
     SignInManager<AdminUser> signInManager)
         {
+            _fileStorageService = fileStorageService;
+            _enquiryService = enquiryService;
             _productService = productService;
             _dataService = dataService;
             _userManager = userManager;
@@ -130,44 +138,17 @@ namespace QPET.Controllers
                 await _productService.GetAllAsync();
 
             var enquiries =
-                _dataService.GetEnquiries();
+                await _enquiryService.GetAllAsync();
 
             var reviews =
                 _dataService.GetReviews();
 
-            var customers =
-                _dataService.GetCustomers();
-
-            var branches =
-                _dataService.GetBranches();
-
-
             var recentEnquiries =
                 enquiries
-                    .OrderByDescending(
-                        enquiry =>
-                            enquiry.EnquiryId
-                    )
                     .Take(5)
                     .Select(
                         enquiry =>
                         {
-                            var customer =
-                                customers.FirstOrDefault(
-                                    customer =>
-                                        customer.CustomerId ==
-                                        enquiry.CustomerId
-                                );
-
-
-                            var branch =
-                                branches.FirstOrDefault(
-                                    branch =>
-                                        branch.BranchId ==
-                                        enquiry.BranchId
-                                );
-
-
                             return new
                                 AdminDashboardEnquiryViewModel
                             {
@@ -175,25 +156,29 @@ namespace QPET.Controllers
                                     enquiry.EnquiryId,
 
                                 CustomerName =
-                                    customer?.FullName
+                                    enquiry.Customer?.FullName
                                     ?? "Unknown customer",
 
                                 CustomerEmail =
-                                    customer?.EmailAddress
+                                    enquiry.Customer?.EmailAddress
                                     ?? "Email not available",
 
                                 BranchName =
-                                    branch?.BranchName
+                                    enquiry.Branch?.BranchName
                                     ?? "Unknown branch",
 
                                 Subject =
                                     enquiry.Subject,
 
                                 CreatedDate =
-                                    enquiry.CreatedDate,
+                                    enquiry.CreatedDate.ToString(
+                                        "dd MMM yyyy"),
 
                                 Status =
-                                    enquiry.Status
+                                    enquiry.Status ==
+                                        EnquiryStatus.InProgress
+                                            ? "In Progress"
+                                            : enquiry.Status.ToString()
                             };
                         }
                     )
@@ -212,14 +197,17 @@ namespace QPET.Controllers
                     NewEnquiryCount =
                         enquiries.Count(
                             enquiry =>
-                                enquiry.Status == "New"
+                                enquiry.Status ==
+                                EnquiryStatus.New
                         ),
 
                     OpenEnquiryCount =
                         enquiries.Count(
                             enquiry =>
-                                enquiry.Status == "New" ||
-                                enquiry.Status == "InProgress"
+                                enquiry.Status ==
+                                    EnquiryStatus.New ||
+                                enquiry.Status ==
+                                    EnquiryStatus.InProgress
                         ),
 
                     ReviewCount =
@@ -234,59 +222,15 @@ namespace QPET.Controllers
         }
 
 
-        public IActionResult Enquiries(
-            string? status = null)
+        public async Task<IActionResult> Enquiries(
+            EnquiryStatus? status = null)
         {
-            var allowedStatuses =
-                new[]
-                {
-                    "New",
-                    "InProgress",
-                    "Resolved",
-                    "Closed"
-                };
-
-
-            if (
-                !string.IsNullOrWhiteSpace(status) &&
-                !allowedStatuses.Contains(status))
-            {
-                status = null;
-            }
-
-
-            var enquiries =
-                _dataService
-                    .GetEnquiries()
-                    .OrderByDescending(
-                        enquiry =>
-                            enquiry.EnquiryId
-                    )
-                    .AsEnumerable();
-
-
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                enquiries =
-                    enquiries.Where(
-                        enquiry =>
-                            enquiry.Status == status
-                    );
-            }
-
-
-            ViewBag.Customers =
-                _dataService.GetCustomers();
-
-            ViewBag.Branches =
-                _dataService.GetBranches();
-
-
             var model =
                 new AdminEnquiryListViewModel
                 {
                     Enquiries =
-                        enquiries.ToList(),
+                        await _enquiryService.GetAllAsync(
+                            status),
 
                     SelectedStatus =
                         status
@@ -298,12 +242,10 @@ namespace QPET.Controllers
 
 
         [HttpGet]
-        public IActionResult EnquiryDetails(
-            int id)
+        public async Task<IActionResult> EnquiryDetails(int id)
         {
             var enquiry =
-                _dataService
-                    .GetEnquiryById(id);
+                await _enquiryService.GetByIdAsync(id);
 
 
             if (enquiry == null)
@@ -312,47 +254,59 @@ namespace QPET.Controllers
                     true;
 
                 return View(
-                    new Enquiry()
-                );
+                    new DomainEnquiry());
             }
-
-
-            ViewBag.Customer =
-                _dataService
-                    .GetCustomers()
-                    .FirstOrDefault(
-                        customer =>
-                            customer.CustomerId ==
-                            enquiry.CustomerId
-                    );
-
-
-            ViewBag.Branch =
-                _dataService
-                    .GetBranches()
-                    .FirstOrDefault(
-                        branch =>
-                            branch.BranchId ==
-                            enquiry.BranchId
-                    );
-
-
             return View(enquiry);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> DownloadEnquiryAttachment(
+            int enquiryId,
+            int attachmentId)
+        {
+            var enquiry =
+                await _enquiryService.GetByIdAsync(enquiryId);
+
+            if (enquiry == null)
+            {
+                return NotFound();
+            }
+
+            var attachment =
+                enquiry.Attachments.FirstOrDefault(
+                    item =>
+                        item.AttachmentId == attachmentId);
+
+            if (attachment == null)
+            {
+                return NotFound();
+            }
+
+            var stream =
+                await _fileStorageService.OpenReadAsync(
+                    attachment.FilePath);
+
+            if (stream == null)
+            {
+                return NotFound();
+            }
+
+            return File(
+                stream,
+                attachment.ContentType,
+                attachment.OriginalFileName);
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult UpdateEnquiryStatus(
+        public async Task<IActionResult> UpdateEnquiryStatus(
             int id,
-            string status)
+            EnquiryStatus status)
         {
             var updated =
-                _dataService
-                    .UpdateEnquiryStatus(
-                        id,
-                        status
-                    );
+                await _enquiryService.UpdateStatusAsync(
+                    id,
+                    status);
 
 
             TempData["EnquiryMessage"] =

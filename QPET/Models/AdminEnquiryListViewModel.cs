@@ -1,10 +1,15 @@
+using QPET.Domain.Entities;
+using System.Xml.Linq;
+
 namespace QPET.Models
 {
     public class AdminEnquiryListViewModel
-    {
-        public IEnumerable<Enquiry> Enquiries { get; set; } =
-            new List<Enquiry>();
+{
+    public IEnumerable<QPET.Domain.Entities.Enquiry> Enquiries
+    { get; set; }
+        = new List<QPET.Domain.Entities.Enquiry>();
 
-        public string? SelectedStatus { get; set; }
-    }
+    public QPET.Domain.Entities.EnquiryStatus? SelectedStatus
+    { get; set; }
+}
 }

@@ -5,8 +5,9 @@
     ViewData["Title"] = "Contact";
 
     var branches =
-        ViewBag.Branches as List<Branch>
-        ?? new List<Branch>();
+       ViewBag.Branches
+           as List<QPET.Domain.Entities.Branch>
+       ?? new List<QPET.Domain.Entities.Branch>();
 
     var enquiryReference =
         ViewBag.EnquiryReference as string;

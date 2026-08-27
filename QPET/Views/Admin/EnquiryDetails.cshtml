@@ -1,5 +1,5 @@
-﻿@model QPET.Models.Enquiry
-@using QPET.Models
+﻿@model QPET.Domain.Entities.Enquiry
+@using QPET.Domain.Entities
 
 @{
     ViewData["Title"] = "Enquiry Details";
@@ -7,30 +7,28 @@
     var notFound =
         ViewBag.EnquiryNotFound == true;
 
-    var customer =
-        ViewBag.Customer as Customer;
+    var customer = Model.Customer;
 
-    var branch =
-        ViewBag.Branch as Branch;
+    var branch = Model.Branch;
 
 
     var displayStatus =
-        Model.Status == "InProgress"
+        Model.Status == EnquiryStatus.InProgress
             ? "In Progress"
-            : Model.Status;
+            : Model.Status.ToString();
 
 
-    string? nextStatus =
+    EnquiryStatus? nextStatus =
         Model.Status switch
         {
-            "New" =>
-                "InProgress",
+            EnquiryStatus.New =>
+                EnquiryStatus.InProgress,
 
-            "InProgress" =>
-                "Resolved",
+            EnquiryStatus.InProgress =>
+                EnquiryStatus.Resolved,
 
-            "Resolved" =>
-                "Closed",
+            EnquiryStatus.Resolved =>
+                EnquiryStatus.Closed,
 
             _ =>
                 null
@@ -40,13 +38,13 @@
     string? buttonText =
         Model.Status switch
         {
-            "New" =>
+            EnquiryStatus.New =>
                 "Start Processing",
 
-            "InProgress" =>
+            EnquiryStatus.InProgress =>
                 "Mark as Resolved",
 
-            "Resolved" =>
+            EnquiryStatus.Resolved =>
                 "Close Enquiry",
 
             _ =>
@@ -57,10 +55,10 @@
     var lifecycle =
         new[]
         {
-            "New",
-            "InProgress",
-            "Resolved",
-            "Closed"
+            EnquiryStatus.New,
+            EnquiryStatus.InProgress,
+            EnquiryStatus.Resolved,
+            EnquiryStatus.Closed
         };
 
 
@@ -71,9 +69,9 @@
                 status =>
                 {
                     var formatted =
-                        status == "InProgress"
+                        status == EnquiryStatus.InProgress
                             ? "In Progress"
-                            : status;
+                            : status.ToString();
 
                     return status == Model.Status
                         ? $"[{formatted}]"
@@ -260,7 +258,7 @@ else
                         </span>
 
                         <strong>
-                            @Model.CreatedDate
+                            @Model.CreatedDate.ToString("dd MMM yyyy HH:mm")
                         </strong>
 
                     </div>
@@ -301,12 +299,18 @@ else
                     }
                     else
                     {
-                        @foreach (
-                                        var attachment
-                                        in Model.Attachments)
+                        @foreach (var attachment in Model.Attachments)
                         {
                             <p>
-                                @attachment.OriginalFileName
+                                <a asp-controller="Admin"
+                                   asp-action="DownloadEnquiryAttachment"
+                                   asp-route-enquiryId="@Model.EnquiryId"
+                                   asp-route-attachmentId="@attachment.AttachmentId"
+                                   class="admin-action-button">
+
+                                    @attachment.OriginalFileName
+
+                                </a>
                             </p>
                         }
                     }

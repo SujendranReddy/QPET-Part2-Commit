@@ -91,12 +91,46 @@ namespace QPET.Infrastructure.Storage
 
             return $"/uploads/{safeFolder}/{storedFileName}";
         }
+        public Task<Stream?> OpenReadAsync(string filePath)
+        {
+            var physicalPath =
+                ResolvePhysicalPath(filePath);
+
+            if (physicalPath == null ||
+                !File.Exists(physicalPath))
+            {
+                return Task.FromResult<Stream?>(null);
+            }
+
+            Stream stream =
+                new FileStream(
+                    physicalPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read);
+
+            return Task.FromResult<Stream?>(stream);
+        }
 
         public Task DeleteAsync(string filePath)
         {
+            var physicalPath =
+                ResolvePhysicalPath(filePath);
+
+            if (physicalPath != null &&
+                File.Exists(physicalPath))
+            {
+                File.Delete(physicalPath);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private string? ResolvePhysicalPath(string filePath)
+        {
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                return Task.CompletedTask;
+                return null;
             }
 
             var relativePath =
@@ -122,15 +156,10 @@ namespace QPET.Infrastructure.Storage
                     uploadsRoot + Path.DirectorySeparatorChar,
                     StringComparison.OrdinalIgnoreCase))
             {
-                return Task.CompletedTask;
+                return null;
             }
 
-            if (File.Exists(physicalPath))
-            {
-                File.Delete(physicalPath);
-            }
-
-            return Task.CompletedTask;
+            return physicalPath;
         }
     }
 }

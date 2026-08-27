@@ -22,6 +22,26 @@ builder.Services.AddScoped<
     ProductRepository>();
 
 builder.Services.AddScoped<
+    IBranchRepository,
+    BranchRepository>();
+
+builder.Services.AddScoped<
+    ICustomerRepository,
+    CustomerRepository>();
+
+builder.Services.AddScoped<
+    IEnquiryRepository,
+    EnquiryRepository>();
+
+builder.Services.AddScoped<
+    IBranchService,
+    BranchService>();
+
+builder.Services.AddScoped<
+    IEnquiryService,
+    EnquiryService>();
+
+builder.Services.AddScoped<
     IProductService,
     ProductService>();
 
