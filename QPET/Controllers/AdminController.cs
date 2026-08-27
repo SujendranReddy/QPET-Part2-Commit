@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using QPET.Application.DTOs;
+using QPET.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QPET.Models;
@@ -9,16 +11,20 @@ namespace QPET.Controllers
     [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
+        private readonly IProductService _productService;
         private readonly PrototypeDataService _dataService;
         private readonly UserManager<AdminUser> _userManager;
 
         private readonly SignInManager<AdminUser> _signInManager;
 
         public AdminController(
+
     PrototypeDataService dataService,
     UserManager<AdminUser> userManager,
+    IProductService productService,
     SignInManager<AdminUser> signInManager)
         {
+            _productService = productService;
             _dataService = dataService;
             _userManager = userManager;
             _signInManager = signInManager;
@@ -118,10 +124,10 @@ namespace QPET.Controllers
             return RedirectToAction(nameof(Login));
         }
 
-        public IActionResult Dashboard()
+        public async Task<IActionResult> Dashboard()
         {
             var products =
-                _dataService.GetProducts();
+                await _productService.GetAllAsync();
 
             var enquiries =
                 _dataService.GetEnquiries();
@@ -341,7 +347,6 @@ namespace QPET.Controllers
             int id,
             string status)
         {
-            //This service validates that the requested enquiry status change is allowed
             var updated =
                 _dataService
                     .UpdateEnquiryStatus(
@@ -366,162 +371,163 @@ namespace QPET.Controllers
         }
 
 
-        public IActionResult Products()
+        public async Task<IActionResult> Products()
         {
             var model =
-                new ProductCatalogueViewModel
+                new AdminProductCatalogueViewModel
                 {
                     Products =
-                        _dataService.GetProducts(),
+                        await _productService.GetAllAsync(),
 
                     Categories =
-                        _dataService.GetCategories(),
+                        await _productService.GetCategoriesAsync(),
 
                     SubCategories =
-                        _dataService.GetSubCategories()
+                        await _productService.GetSubCategoriesAsync()
                 };
-
 
             return View(model);
         }
 
 
         [HttpGet]
-        public IActionResult CreateProduct()
+        public async Task<IActionResult> CreateProduct()
         {
-            PopulateProductLookups();
-
+            await PopulateDatabaseProductLookupsAsync();
 
             return View(
                 new AdminProductViewModel
                 {
                     IsActive = true
-                }
-            );
+                });
         }
 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateProduct(
-            AdminProductViewModel model)
+        public async Task<IActionResult> CreateProduct(
+    AdminProductViewModel model)
         {
-            ValidateProductSelection(model);
             ValidateProductImage(model);
-
 
             if (!ModelState.IsValid)
             {
-                PopulateProductLookups();
+                await PopulateDatabaseProductLookupsAsync();
 
                 return View(model);
             }
 
+            using var imageStream =
+                model.Image?.OpenReadStream();
 
-            var product =
-                new Product
+            var images =
+                model.Image != null &&
+                model.Image.Length > 0 &&
+                imageStream != null
+                    ? new List<UploadedFile>
+                    {
+                new UploadedFile
                 {
+                    OriginalFileName =
+                        model.Image.FileName,
+
+                    ContentType =
+                        model.Image.ContentType,
+
+                    Length =
+                        model.Image.Length,
+
+                    Content =
+                        imageStream
+                }
+                    }
+                    : new List<UploadedFile>();
+
+            var request =
+                new SaveProductRequest
+                {
+                    ProductName =
+                        model.ProductName,
+
                     CategoryId =
                         model.CategoryId,
 
                     SubCategoryId =
                         model.SubCategoryId!.Value,
 
-                    ProductName =
-                        model.ProductName.Trim(),
-
                     NeckFinish =
-                        model.NeckFinish.Trim(),
+                        model.NeckFinish,
 
                     CapacityVolume =
-                        model.CapacityVolume.Trim(),
+                        model.CapacityVolume,
 
                     Description =
-                        model.Description.Trim(),
+                        model.Description,
+
+                    Images =
+                        images,
 
                     IsActive =
                         model.IsActive
                 };
 
+            try
+            {
+                var productId =
+                    await _productService.CreateAsync(request);
 
-            var createdProduct =
-                _dataService.AddProduct(
-                    product
-                );
+                TempData["ProductMessage"] =
+                    $"Product created successfully. Product ID: {productId}";
 
+                return RedirectToAction(nameof(Products));
+            }
+            catch (ArgumentException exception)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    exception.Message);
 
-            TempData["ProductMessage"] =
-                $"Product created successfully. Product ID: {createdProduct.ProductId}";
+                await PopulateDatabaseProductLookupsAsync();
 
-
-            return RedirectToAction(
-                nameof(Products)
-            );
+                return View(model);
+            }
         }
 
 
         [HttpGet]
-        public IActionResult EditProduct(
-            int id)
+        public async Task<IActionResult> EditProduct(int id)
         {
             var product =
-                _dataService
-                    .GetProductById(id);
-
+                await _productService.GetByIdAsync(id);
 
             if (product == null)
             {
-                ViewBag.ProductNotFound =
-                    true;
+                ViewBag.ProductNotFound = true;
 
                 return View(
-                    new AdminProductViewModel()
-                );
+                    new AdminProductViewModel());
             }
 
-
-            PopulateProductLookups();
-
+            await PopulateDatabaseProductLookupsAsync();
 
             var primaryImage =
-                product.Images
-                    .FirstOrDefault(
-                        image =>
-                            image.IsPrimary
-                    );
-
+                product.ProductImages
+                    .FirstOrDefault(image => image.IsPrimary)
+                ?? product.ProductImages.FirstOrDefault();
 
             var model =
                 new AdminProductViewModel
                 {
-                    ProductId =
-                        product.ProductId,
-
-                    CategoryId =
-                        product.CategoryId,
-
-                    SubCategoryId =
-                        product.SubCategoryId,
-
-                    ProductName =
-                        product.ProductName,
-
-                    NeckFinish =
-                        product.NeckFinish,
-
-                    CapacityVolume =
-                        product.CapacityVolume,
-
-                    Description =
-                        product.Description,
-
-                    IsActive =
-                        product.IsActive,
-
-                    ExistingImageUrl =
-                        primaryImage?.ImageUrl
+                    ProductId = product.ProductId,
+                    CategoryId = product.CategoryId,
+                    SubCategoryId = product.SubCategoryId,
+                    ProductName = product.ProductName,
+                    NeckFinish = product.NeckFinish,
+                    CapacityVolume = product.CapacityVolume,
+                    Description = product.Description,
+                    IsActive = product.IsActive,
+                    ExistingImageUrl = primaryImage?.ImageUrl
                 };
-
 
             return View(model);
         }
@@ -529,114 +535,112 @@ namespace QPET.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult EditProduct(
+        public async Task<IActionResult> EditProduct(
             int id,
             AdminProductViewModel model)
         {
             var existingProduct =
-                _dataService
-                    .GetProductById(id);
-
+                await _productService.GetByIdAsync(id);
 
             if (existingProduct == null)
             {
                 return NotFound();
             }
 
-
-            model.ProductId =
-                id;
-
-
-            ValidateProductSelection(model);
+            model.ProductId = id;
             ValidateProductImage(model);
-
 
             if (!ModelState.IsValid)
             {
-                PopulateProductLookups();
-
+                await PopulateDatabaseProductLookupsAsync();
 
                 model.ExistingImageUrl =
-                    existingProduct
-                        .Images
-                        .FirstOrDefault(
-                            image =>
-                                image.IsPrimary
-                        )
+                    existingProduct.ProductImages
+                        .FirstOrDefault(image => image.IsPrimary)
                         ?.ImageUrl;
-
 
                 return View(model);
             }
 
+            using var imageStream =
+                model.Image?.OpenReadStream();
 
-            var updatedProduct =
-                new Product
+            var images =
+                model.Image != null &&
+                model.Image.Length > 0 &&
+                imageStream != null
+                    ? new List<UploadedFile>
+                    {
+                        new UploadedFile
+                        {
+                            OriginalFileName = model.Image.FileName,
+                            ContentType = model.Image.ContentType,
+                            Length = model.Image.Length,
+                            Content = imageStream
+                        }
+                    }
+                    : new List<UploadedFile>();
+
+            var request =
+                new SaveProductRequest
                 {
-                    ProductId =
-                        id,
-
-                    CategoryId =
-                        model.CategoryId,
-
-                    SubCategoryId =
-                        model.SubCategoryId!.Value,
-
-                    ProductName =
-                        model.ProductName.Trim(),
-
-                    NeckFinish =
-                        model.NeckFinish.Trim(),
-
-                    CapacityVolume =
-                        model.CapacityVolume.Trim(),
-
-                    Description =
-                        model.Description.Trim(),
-
-                    IsActive =
-                        model.IsActive,
-
-                    Images =
-                        existingProduct.Images
+                    ProductId = id,
+                    ProductName = model.ProductName,
+                    CategoryId = model.CategoryId,
+                    SubCategoryId = model.SubCategoryId!.Value,
+                    NeckFinish = model.NeckFinish,
+                    CapacityVolume = model.CapacityVolume,
+                    Description = model.Description,
+                    Images = images,
+                    IsActive = model.IsActive
                 };
 
+            try
+            {
+                var updated =
+                    await _productService.UpdateAsync(request);
 
-            _dataService.UpdateProduct(
-                updatedProduct
-            );
+                if (!updated)
+                {
+                    return NotFound();
+                }
 
+                TempData["ProductMessage"] =
+                    "Product updated successfully.";
 
-            TempData["ProductMessage"] =
-                "Product updated successfully.";
+                return RedirectToAction(nameof(Products));
+            }
+            catch (ArgumentException exception)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    exception.Message);
 
+                await PopulateDatabaseProductLookupsAsync();
 
-            return RedirectToAction(
-                nameof(Products)
-            );
+                model.ExistingImageUrl =
+                    existingProduct.ProductImages
+                        .FirstOrDefault(image => image.IsPrimary)
+                        ?.ImageUrl;
+
+                return View(model);
+            }
         }
 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteProduct(
-            int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
             var deleted =
-                _dataService
-                    .DeleteProduct(id);
-
+                await _productService.DeleteAsync(id);
 
             TempData["ProductMessage"] =
                 deleted
                     ? "Product deleted successfully."
                     : "The product could not be found.";
 
-
-            return RedirectToAction(
-                nameof(Products)
-            );
+            return RedirectToAction(nameof(Products));
         }
 
 
@@ -685,55 +689,13 @@ namespace QPET.Controllers
         }
 
 
-        private void PopulateProductLookups()
+        private async Task PopulateDatabaseProductLookupsAsync()
         {
             ViewBag.Categories =
-                _dataService.GetCategories();
+                await _productService.GetCategoriesAsync();
 
             ViewBag.SubCategories =
-                _dataService.GetSubCategories();
-        }
-
-
-        private void ValidateProductSelection(
-            AdminProductViewModel model)
-        {
-            var categories =
-                _dataService.GetCategories();
-
-            var subCategories =
-                _dataService.GetSubCategories();
-
-
-            if (
-                !categories.Any(
-                    category =>
-                        category.CategoryId ==
-                        model.CategoryId
-                ))
-            {
-                ModelState.AddModelError(
-                    nameof(model.CategoryId),
-                    "Select a valid category."
-                );
-            }
-
-
-            if (
-                !model.SubCategoryId.HasValue ||
-                !subCategories.Any(
-                    subCategory =>
-                        subCategory.SubCategoryId ==
-                        model.SubCategoryId.Value &&
-                        subCategory.CategoryId ==
-                        model.CategoryId
-                ))
-            {
-                ModelState.AddModelError(
-                    nameof(model.SubCategoryId),
-                    "Select a valid subcategory."
-                );
-            }
+                await _productService.GetSubCategoriesAsync();
         }
 
 

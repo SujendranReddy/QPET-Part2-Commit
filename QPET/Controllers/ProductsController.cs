@@ -1,33 +1,39 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using QPET.Application.Interfaces;
 using QPET.Models;
-using QPET.Services;
 
 namespace QPET.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly PrototypeDataService _dataService;
+        private readonly IProductService _productService;
 
         public ProductsController(
-            PrototypeDataService dataService
-        )
+            IProductService productService)
         {
-            _dataService = dataService;
+            _productService = productService;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index(
+            int? categoryId = null,
+            int? subCategoryId = null)
         {
-            var model = new ProductCatalogueViewModel
-            {
-                Products = _dataService
-                    .GetProducts()
-                    .Where(product => product.IsActive)
-                    .ToList(),
+            var model =
+                new ProductCatalogueViewModel
+                {
+                    Products =
+                        await _productService
+                            .GetPublicProductsAsync(
+                                categoryId,
+                                subCategoryId),
+                    Categories =
+                        await _productService
+                            .GetCategoriesAsync(),
 
-                Categories = _dataService.GetCategories(),
-
-                SubCategories = _dataService.GetSubCategories()
-            };
+                    SubCategories =
+                        await _productService
+                            .GetSubCategoriesAsync()
+                };
 
             return View(model);
         }

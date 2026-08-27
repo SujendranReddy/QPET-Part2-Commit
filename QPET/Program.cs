@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using QPET.Data;
 using Microsoft.AspNetCore.Identity;
 using QPET.Models;
+using QPET.Application.Interfaces;
+using QPET.Application.Services;
+using QPET.Infrastructure.Repositories;
+using QPET.Infrastructure.Storage;
 
 var builder =
     WebApplication.CreateBuilder(args);
@@ -12,6 +16,19 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<
+    IProductRepository,
+    ProductRepository>();
+
+builder.Services.AddScoped<
+    IProductService,
+    ProductService>();
+
+builder.Services.AddScoped<
+    IFileStorageService,
+    LocalFileStorageService>();
+
 builder.Services
     .AddIdentity<AdminUser, IdentityRole>(options =>
     {

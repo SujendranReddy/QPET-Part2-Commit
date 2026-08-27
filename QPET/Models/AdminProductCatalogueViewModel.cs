@@ -1,11 +1,10 @@
-using QPET.Application.DTOs;
-
 namespace QPET.Models
 {
-    public class ProductCatalogueViewModel
+    public class AdminProductCatalogueViewModel
     {
-        public List<ProductCardDto> Products { get; set; }
-            = new List<ProductCardDto>();
+        public List<QPET.Domain.Entities.Product> Products
+        { get; set; }
+            = new List<QPET.Domain.Entities.Product>();
 
         public List<QPET.Domain.Entities.Category> Categories
         { get; set; }
