@@ -1,25 +1,17 @@
 ﻿@model QPET.Models.AdminEnquiryListViewModel
 @using QPET.Models
+@using QPET.Domain.Entities
 
 @{
     ViewData["Title"] = "Enquiries";
 
-    var customers =
-        ViewBag.Customers as List<Customer>
-        ?? new List<Customer>();
-
-    var branches =
-        ViewBag.Branches as List<Branch>
-        ?? new List<Branch>();
-
-
     var statuses =
-        new Dictionary<string, string>
+        new Dictionary<EnquiryStatus, string>
         {
-            { "New", "New" },
-            { "InProgress", "In Progress" },
-            { "Resolved", "Resolved" },
-            { "Closed", "Closed" }
+            { EnquiryStatus.New, "New" },
+            { EnquiryStatus.InProgress, "In Progress" },
+            { EnquiryStatus.Resolved, "Resolved" },
+            { EnquiryStatus.Closed, "Closed" }
         };
 }
 
@@ -78,8 +70,7 @@
                             class="admin-filter-control"
                             onchange="this.form.submit()">
 
-                        @if (string.IsNullOrWhiteSpace(
-                                                Model.SelectedStatus))
+                        @if (!Model.SelectedStatus.HasValue)
                         {
                             <option value=""
                                     selected>
@@ -170,34 +161,24 @@
                         @foreach (
                                             var enquiry in Model.Enquiries)
                         {
-                            var customer =
-                            customers.FirstOrDefault(
-                            customer =>
-                            customer.CustomerId ==
-                            enquiry.CustomerId
-                            );
+                            var customer = enquiry.Customer;
 
-                            var branch =
-                            branches.FirstOrDefault(
-                            branch =>
-                            branch.BranchId ==
-                            enquiry.BranchId
-                            );
+                            var branch = enquiry.Branch;
 
 
                             var statusClass =
                             enquiry.Status switch
                             {
-                                "New" =>
+                                EnquiryStatus.New =>
                                             "admin-status-new",
 
-                                "InProgress" =>
+                                EnquiryStatus.InProgress =>
                                             "admin-status-inprogress",
 
-                                "Resolved" =>
+                                EnquiryStatus.Resolved =>
                                             "admin-status-resolved",
 
-                                "Closed" =>
+                                EnquiryStatus.Closed =>
                                             "admin-status-closed",
 
                                 _ =>
@@ -207,20 +188,15 @@
 
                             var displayStatus =
                             enquiry.Status ==
-                            "InProgress"
+                            EnquiryStatus.InProgress
                             ? "In Progress"
-                            : enquiry.Status;
+                            : enquiry.Status.ToString();
 
 
                             var displayDate =
-                            DateTime.TryParse(
-                            enquiry.CreatedDate,
-                            out var parsedDate
-                            )
-                            ? parsedDate.ToString(
+                            enquiry.CreatedDate.ToString(
                             "dd MMM yyyy"
-                            )
-                            : enquiry.CreatedDate;
+                            );
 
 
                             <tr>

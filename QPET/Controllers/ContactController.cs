@@ -1,38 +1,37 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using QPET.Application.DTOs;
+using QPET.Application.Interfaces;
 using QPET.Models;
-using QPET.Services;
 
 namespace QPET.Controllers
 {
     public class ContactController : Controller
     {
-        private readonly PrototypeDataService
-            _dataService;
+        private const int MaximumAttachmentCount = 5;
+        private const long MaximumAttachmentSize =
+            10 * 1024 * 1024;
 
+        private readonly IBranchService _branchService;
+        private readonly IEnquiryService _enquiryService;
 
         public ContactController(
-            PrototypeDataService dataService)
+            IBranchService branchService,
+            IEnquiryService enquiryService)
         {
-            _dataService =
-                dataService;
+            _branchService = branchService;
+            _enquiryService = enquiryService;
         }
 
-
         [HttpGet]
-        public IActionResult Index(
+        public async Task<IActionResult> Index(
             string? product = null)
         {
-            PopulateBranches();
-
+            await PopulateBranchesAsync();
 
             var model =
                 new EnquiryViewModel();
 
-
-            if (
-                !string.IsNullOrWhiteSpace(
-                    product
-                ))
+            if (!string.IsNullOrWhiteSpace(product))
             {
                 model.Subject =
                     "Enquiry about " +
@@ -44,195 +43,154 @@ namespace QPET.Controllers
                     ", including available commercial quantities and product specifications.";
             }
 
-
             return View(model);
         }
 
-
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SubmitEnquiry(
+        public async Task<IActionResult> SubmitEnquiry(
             EnquiryViewModel model)
         {
-            ValidateBranch(
-                model.BranchId
-            );
-
-            ValidateAttachments(
-                model.Attachments
-            );
-
+            ValidateAttachments(model.Attachments);
 
             if (!ModelState.IsValid)
             {
-                PopulateBranches();
+                await PopulateBranchesAsync();
 
                 return View(
                     "Index",
-                    model
-                );
+                    model);
             }
 
-            // This reuses existing customers with the same email so one customer can have many enquiries 
-            var customer =
-                _dataService
-                    .FindCustomerByEmail(
-                        model.EmailAddress.Trim()
-                    );
-
-
-            if (customer == null)
-            {
-                customer =
-                    _dataService.AddCustomer(
-                        new Customer
-                        {
-                            FullName =
-                                model.FullName.Trim(),
-
-                            EmailAddress =
-                                model.EmailAddress.Trim(),
-
-                            PhoneNumber =
-                                model.PhoneNumber.Trim()
-                        }
-                    );
-            }
-
-            // The prototype stores attachment metadata instead of  saving physical files
-            var attachments =
+            var uploadedFiles =
                 model.Attachments
-                    .Where(
-                        file =>
-                            file.Length > 0
-                    )
+                    .Where(file => file.Length > 0)
                     .Select(
                         file =>
-                            new EnquiryAttachment
+                            new UploadedFile
                             {
                                 OriginalFileName =
                                     Path.GetFileName(
-                                        file.FileName
-                                    ),
-
-                                StoredFileName =
-                                    Path.GetFileName(
-                                        file.FileName
-                                    ),
+                                        file.FileName),
 
                                 ContentType =
-                                    string.IsNullOrWhiteSpace(
-                                        file.ContentType
-                                    )
-                                        ? "unknown"
-                                        : file.ContentType
-                            }
-                    )
+                                    file.ContentType,
+
+                                Length =
+                                    file.Length,
+
+                                Content =
+                                    file.OpenReadStream()
+                            })
                     .ToList();
 
-
-            var enquiry =
-                _dataService.AddEnquiry(
-                    new Enquiry
+            try
+            {
+                var request =
+                    new CreateEnquiryRequest
                     {
-                        CustomerId =
-                            customer.CustomerId,
-
                         BranchId =
                             model.BranchId,
 
+                        FullName =
+                            model.FullName,
+
+                        PhoneNumber =
+                            model.PhoneNumber,
+
+                        EmailAddress =
+                            model.EmailAddress,
+
                         Subject =
-                            model.Subject.Trim(),
+                            model.Subject,
 
                         Message =
-                            model.Message.Trim(),
+                            model.Message,
 
                         Attachments =
-                            attachments
-                    }
-                );
+                            uploadedFiles
+                    };
 
+                var enquiryId =
+                    await _enquiryService.SubmitAsync(
+                        request);
 
-            return RedirectToAction(
-                nameof(Confirmation),
-                new
+                return RedirectToAction(
+                    nameof(Confirmation),
+                    new
+                    {
+                        id = enquiryId
+                    });
+            }
+            catch (ArgumentException exception)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    exception.Message);
+
+                await PopulateBranchesAsync();
+
+                return View(
+                    "Index",
+                    model);
+            }
+            finally
+            {
+                foreach (var file in uploadedFiles)
                 {
-                    id = enquiry.EnquiryId
+                    file.Content.Dispose();
                 }
-            );
+            }
         }
 
-
         [HttpGet]
-        public IActionResult Confirmation(
+        public async Task<IActionResult> Confirmation(
             int id)
         {
             var enquiry =
-                _dataService
-                    .GetEnquiryById(id);
-
+                await _enquiryService.GetByIdAsync(id);
 
             if (enquiry == null)
             {
-                return RedirectToAction(
-                    nameof(Index)
-                );
+                return RedirectToAction(nameof(Index));
             }
 
-
-            PopulateBranches();
-
+            await PopulateBranchesAsync();
 
             ViewBag.EnquiryReference =
-                "ENQ-" +
-                enquiry.EnquiryId;
-
+                $"ENQ-{enquiry.EnquiryId}";
 
             return View(
                 "Index",
-                new EnquiryViewModel()
-            );
+                new EnquiryViewModel());
         }
 
-
-        private void PopulateBranches()
+        private async Task PopulateBranchesAsync()
         {
             ViewBag.Branches =
-                _dataService
-                    .GetBranches();
+                await _branchService.GetAllAsync();
         }
-
-
-        private void ValidateBranch(
-            int branchId)
-        {
-            var exists =
-                _dataService
-                    .GetBranches()
-                    .Any(
-                        branch =>
-                            branch.BranchId ==
-                            branchId
-                    );
-
-
-            if (!exists)
-            {
-                ModelState.AddModelError(
-                    nameof(
-                        EnquiryViewModel.BranchId
-                    ),
-                    "Please select a valid branch."
-                );
-            }
-        }
-
 
         private void ValidateAttachments(
             IEnumerable<IFormFile> attachments)
         {
+            var files =
+                attachments
+                    .Where(file => file.Length > 0)
+                    .ToList();
+
+            if (files.Count > MaximumAttachmentCount)
+            {
+                ModelState.AddModelError(
+                    nameof(EnquiryViewModel.Attachments),
+                    "A maximum of five attachments is allowed.");
+
+                return;
+            }
+
             var allowedExtensions =
-                new[]
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase)
                 {
                     ".pdf",
                     ".jpg",
@@ -240,36 +198,27 @@ namespace QPET.Controllers
                     ".png"
                 };
 
-
-            foreach (
-                var file in attachments)
+            foreach (var file in files)
             {
-                if (file.Length == 0)
-                {
-                    continue;
-                }
-
-
                 var extension =
-                    Path.GetExtension(
-                        file.FileName
-                    )
-                    .ToLowerInvariant();
+                    Path.GetExtension(file.FileName);
 
-
-                if (
-                    !allowedExtensions
-                        .Contains(extension))
+                if (!allowedExtensions.Contains(extension))
                 {
                     ModelState.AddModelError(
-                        nameof(
-                            EnquiryViewModel
-                                .Attachments
-                        ),
-                        "Only PDF, JPG, JPEG and PNG files are allowed."
-                    );
+                        nameof(EnquiryViewModel.Attachments),
+                        "Only PDF, JPG, JPEG and PNG files are allowed.");
 
-                    break;
+                    return;
+                }
+
+                if (file.Length > MaximumAttachmentSize)
+                {
+                    ModelState.AddModelError(
+                        nameof(EnquiryViewModel.Attachments),
+                        "Each attachment must be 10 MB or smaller.");
+
+                    return;
                 }
             }
         }

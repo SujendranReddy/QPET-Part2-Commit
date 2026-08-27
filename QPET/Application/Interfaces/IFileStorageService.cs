@@ -10,6 +10,8 @@ namespace QPET.Application.Interfaces
             UploadedFile file,
             string folder);
 
+        Task<Stream?> OpenReadAsync(string filePath);
+
         Task DeleteAsync(string filePath);
     }
 }
