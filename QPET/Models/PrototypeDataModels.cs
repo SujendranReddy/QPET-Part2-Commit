@@ -10,7 +10,6 @@ namespace QPET.Models
         public List<Customer> Customers { get; set; } = new List<Customer>();
         public List<Enquiry> Enquiries { get; set; } = new List<Enquiry>();
         public List<Review> Reviews { get; set; } = new List<Review>();
-        public PrototypeAdminUser AdminUser { get; set; } = new PrototypeAdminUser();
     }
 
     public class Branch
@@ -96,12 +95,5 @@ namespace QPET.Models
         public int Rating { get; set; }
         public string ReviewMessage { get; set; } = string.Empty;
         public string CreatedDate { get; set; } = string.Empty;
-    }
-
-    public class PrototypeAdminUser
-    {
-        public string EmailAddress { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public bool IsActive { get; set; }
     }
 }

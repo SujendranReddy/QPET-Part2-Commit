@@ -518,55 +518,7 @@ namespace QPET.Services
             }
         }
 
-        // This is prototype authentication, the final app will use ASP.NET Core Identity
-        public PrototypeAdminUser? AuthenticateAdmin(
-    string emailAddress,
-    string password)
-        {
-            lock (FileLock)
-            {
-                var admin =
-                    LoadData().AdminUser;
-
-
-                if (!admin.IsActive)
-                {
-                    return null;
-                }
-
-
-                var emailMatches =
-                    string.Equals(
-                        admin.EmailAddress,
-                        emailAddress.Trim(),
-                        StringComparison.OrdinalIgnoreCase
-                    );
-
-
-                var passwordMatches =
-                    string.Equals(
-                        admin.Password,
-                        password,
-                        StringComparison.Ordinal
-                    );
-
-
-                if (!emailMatches || !passwordMatches)
-                {
-                    return null;
-                }
-
-
-                return new PrototypeAdminUser
-                {
-                    EmailAddress =
-                        admin.EmailAddress,
-
-                    IsActive =
-                        admin.IsActive
-                };
-            }
-        }
+        
 
         private PrototypeData LoadData()
         {

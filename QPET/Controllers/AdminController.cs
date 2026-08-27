@@ -1,21 +1,27 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QPET.Models;
 using QPET.Services;
-using System.Security.Claims;
 
 namespace QPET.Controllers
 {
-    [Authorize(AuthenticationSchemes = "QPETAdmin")]
+    [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
         private readonly PrototypeDataService _dataService;
+        private readonly UserManager<AdminUser> _userManager;
+
+        private readonly SignInManager<AdminUser> _signInManager;
 
         public AdminController(
-            PrototypeDataService dataService)
+    PrototypeDataService dataService,
+    UserManager<AdminUser> userManager,
+    SignInManager<AdminUser> signInManager)
         {
             _dataService = dataService;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
 
@@ -48,100 +54,58 @@ namespace QPET.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(
-            AdminLoginViewModel model)
+     AdminLoginViewModel model)
         {
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-
             var admin =
-                _dataService.AuthenticateAdmin(
-                    model.EmailAddress,
-                    model.Password
-                );
+                await _userManager.FindByEmailAsync(
+                    model.EmailAddress.Trim());
 
-
-            if (admin == null)
+            if (admin == null || !admin.IsActive)
             {
                 ModelState.AddModelError(
                     string.Empty,
-                    "Invalid email address or password."
-                );
-
+                    "Invalid email address or password.");
 
                 return View(model);
             }
 
+            var result =
+                await _signInManager.PasswordSignInAsync(
+                    admin,
+                    model.Password,
+                    model.RememberMe,
+                    lockoutOnFailure: true);
 
-            var claims =
-                new List<Claim>
-                {
-            new Claim(
-                ClaimTypes.Name,
-                admin.EmailAddress
-            ),
-
-            new Claim(
-                ClaimTypes.Role,
-                "Admin"
-            )
-                };
-
-
-            var identity =
-                new ClaimsIdentity(
-                    claims,
-                    "QPETAdmin"
-                );
-
-
-            var principal =
-                new ClaimsPrincipal(
-                    identity
-                );
-
-
-            var authenticationProperties =
-                new AuthenticationProperties
-                {
-                    IsPersistent =
-                        model.RememberMe,
-
-                    ExpiresUtc =
-                        DateTimeOffset.UtcNow.Add(
-                            model.RememberMe
-                                ? TimeSpan.FromDays(7)
-                                : TimeSpan.FromHours(8)
-                        )
-                };
-
-
-            await HttpContext.SignInAsync(
-                "QPETAdmin",
-                principal,
-                authenticationProperties
-            );
-
-            //This reutrns the admin to the requested admin page after a successful login
-            if (
-                !string.IsNullOrWhiteSpace(
-                    model.ReturnUrl
-                ) &&
-                Url.IsLocalUrl(
-                    model.ReturnUrl
-                ))
+            if (result.Succeeded)
             {
-                return LocalRedirect(
-                    model.ReturnUrl
-                );
+                if (!string.IsNullOrWhiteSpace(model.ReturnUrl) &&
+                    Url.IsLocalUrl(model.ReturnUrl))
+                {
+                    return LocalRedirect(model.ReturnUrl);
+                }
+
+                return RedirectToAction(nameof(Dashboard));
             }
 
+            if (result.IsLockedOut)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "This account is temporarily locked. Please try again later.");
 
-            return RedirectToAction(
-                nameof(Dashboard)
-            );
+                return View(model);
+            }
+
+            ModelState.AddModelError(
+                string.Empty,
+                "Invalid email address or password.");
+
+            return View(model);
         }
 
 
@@ -149,16 +113,10 @@ namespace QPET.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(
-                "QPETAdmin"
-            );
+            await _signInManager.SignOutAsync();
 
-
-            return RedirectToAction(
-                nameof(Login)
-            );
+            return RedirectToAction(nameof(Login));
         }
-
 
         public IActionResult Dashboard()
         {
