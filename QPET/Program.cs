@@ -1,4 +1,3 @@
-using QPET.Services;
 using Microsoft.EntityFrameworkCore;
 using QPET.Data;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +15,14 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<
+    IReviewRepository,
+    ReviewRepository>();
+
+builder.Services.AddScoped<
+    IReviewService,
+    ReviewService>();
 
 builder.Services.AddScoped<
     IProductRepository,
@@ -76,9 +83,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
-builder.Services.AddScoped<
-    PrototypeDataService
->();
+
 
 
 

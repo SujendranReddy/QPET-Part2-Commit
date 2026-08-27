@@ -115,14 +115,7 @@
 
 
                         var displayDate =
-                        DateTime.TryParse(
-                        review.CreatedDate,
-                        out var parsedDate
-                        )
-                        ? parsedDate.ToString(
-                        "dd MMM yyyy"
-                        )
-                        : review.CreatedDate;
+                        review.CreatedDate.ToString("dd MMM yyyy");
 
 
                         <article class="public-review-card">

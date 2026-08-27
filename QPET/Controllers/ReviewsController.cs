@@ -1,159 +1,117 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using QPET.Application.DTOs;
+using QPET.Application.Interfaces;
 using QPET.Models;
-using QPET.Services;
 
 namespace QPET.Controllers
 {
     public class ReviewsController : Controller
     {
-        private readonly PrototypeDataService
-            _dataService;
-
+        private readonly IReviewService _reviewService;
+        private readonly IBranchService _branchService;
 
         public ReviewsController(
-            PrototypeDataService dataService)
+            IReviewService reviewService,
+            IBranchService branchService)
         {
-            _dataService =
-                dataService;
+            _reviewService = reviewService;
+            _branchService = branchService;
         }
-
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             return View(
-                BuildPageModel()
-            );
+                await BuildPageModelAsync());
         }
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SubmitReview(
+        public async Task<IActionResult> SubmitReview(
             ReviewsPageViewModel model)
         {
             model.Review ??=
                 new ReviewViewModel();
 
-
-            ValidateBranch(
-                model.Review.BranchId
-            );
-
-
             if (!ModelState.IsValid)
             {
                 model.Reviews =
-                    _dataService
-                        .GetReviews()
-                        .OrderByDescending(
-                            review =>
-                                review.ReviewId
-                        )
-                        .ToList();
-
+                    await _reviewService
+                        .GetForWebsiteAsync(10);
 
                 model.Branches =
-                    _dataService
-                        .GetBranches();
-
+                    await _branchService
+                        .GetAllAsync();
 
                 return View(
                     "Index",
-                    model
-                );
+                    model);
             }
 
+            try
+            {
+                var request =
+                    new CreateReviewRequest
+                    {
+                        BranchId =
+                            model.Review.BranchId,
 
-            var review =
-                new Review
-                {
-                    BranchId =
-                        model.Review.BranchId,
+                        DisplayName =
+                            model.Review.DisplayName,
 
-                    DisplayName =
-                        model.Review
-                            .DisplayName
-                            .Trim(),
+                        EmailAddress =
+                            model.Review.EmailAddress,
 
-                    EmailAddress =
-                        string.IsNullOrWhiteSpace(
-                            model.Review.EmailAddress
-                        )
-                            ? null
-                            : model.Review
-                                .EmailAddress
-                                .Trim(),
+                        Rating =
+                            model.Review.Rating,
 
-                    Rating =
-                        model.Review.Rating,
+                        ReviewMessage =
+                            model.Review.ReviewMessage
+                    };
 
-                    ReviewMessage =
-                        model.Review
-                            .ReviewMessage
-                            .Trim()
-                };
+                await _reviewService.SubmitAsync(request);
 
+                TempData["ReviewMessage"] =
+                    "Thank you. Your review has been submitted successfully.";
 
-            _dataService.AddReview(
-                review
-            );
+                return RedirectToAction(nameof(Index));
+            }
+            catch (ArgumentException exception)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    exception.Message);
 
+                model.Reviews =
+                    await _reviewService
+                        .GetForWebsiteAsync(10);
 
-            TempData["ReviewMessage"] =
-                "Thank you. Your review has been submitted successfully.";
+                model.Branches =
+                    await _branchService
+                        .GetAllAsync();
 
-
-            return RedirectToAction(
-                nameof(Index)
-            );
+                return View(
+                    "Index",
+                    model);
+            }
         }
 
-
-        private ReviewsPageViewModel
-            BuildPageModel()
+        private async Task<ReviewsPageViewModel>
+            BuildPageModelAsync()
         {
             return new ReviewsPageViewModel
             {
                 Reviews =
-                    _dataService
-                        .GetReviews()
-                        .OrderByDescending(
-                            review =>
-                                review.ReviewId
-                        )
-                        .ToList(),
+                    await _reviewService
+                        .GetForWebsiteAsync(10),
 
                 Branches =
-                    _dataService
-                        .GetBranches(),
+                    await _branchService
+                        .GetAllAsync(),
 
                 Review =
                     new ReviewViewModel()
             };
-        }
-
-
-        private void ValidateBranch(
-            int branchId)
-        {
-            var exists =
-                _dataService
-                    .GetBranches()
-                    .Any(
-                        branch =>
-                            branch.BranchId ==
-                            branchId
-                    );
-
-
-            if (!exists)
-            {
-                ModelState.AddModelError(
-                    "Review.BranchId",
-                    "Please select a valid branch."
-                );
-            }
         }
     }
 }
