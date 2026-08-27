@@ -175,12 +175,10 @@
                 .FirstOrDefault(subCategory =>
                 subCategory.SubCategoryId == product.SubCategoryId);
 
-                var primaryImage = product.Images
-                .FirstOrDefault(image => image.IsPrimary);
-
                 var imageUrl =
-                primaryImage?.ImageUrl
-                ?? "/media/images/preform-closeup.jpg";
+                string.IsNullOrWhiteSpace(product.ImageUrl)
+                ? "/media/images/preform-closeup.jpg"
+                : product.ImageUrl;
 
                 <article class="catalogue-product-card"
                          data-category-id="@product.CategoryId"

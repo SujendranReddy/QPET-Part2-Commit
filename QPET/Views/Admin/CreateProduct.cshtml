@@ -5,12 +5,14 @@
     ViewData["Title"] = "Create Product";
 
     var categories =
-        ViewBag.Categories as List<Category>
-        ?? new List<Category>();
+    ViewBag.Categories
+        as List<QPET.Domain.Entities.Category>
+    ?? new List<QPET.Domain.Entities.Category>();
 
     var subCategories =
-        ViewBag.SubCategories as List<SubCategory>
-        ?? new List<SubCategory>();
+        ViewBag.SubCategories
+            as List<QPET.Domain.Entities.SubCategory>
+        ?? new List<QPET.Domain.Entities.SubCategory>();
 }
 
 <div id="createProductPage">

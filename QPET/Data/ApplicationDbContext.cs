@@ -27,8 +27,6 @@ namespace QPET.Data
 
         public DbSet<Enquiry> Enquiries => Set<Enquiry>();
 
-        public DbSet<EnquiryStatus> EnquiryStatuses => Set<EnquiryStatus>();
-
         public DbSet<EnquiryAttachment> EnquiryAttachments =>
             Set<EnquiryAttachment>();
 
@@ -53,6 +51,12 @@ namespace QPET.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Product>()
+               .HasOne(product => product.Category)
+               .WithMany(category => category.Products)
+               .HasForeignKey(product => product.CategoryId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Product>()
                 .HasOne(product => product.SubCategory)
                 .WithMany(subCategory => subCategory.Products)
                 .HasForeignKey(product => product.SubCategoryId)
@@ -60,7 +64,7 @@ namespace QPET.Data
 
             builder.Entity<ProductImage>()
                 .HasOne(image => image.Product)
-                .WithMany(product => product.Images)
+                .WithMany(product => product.ProductImages)
                 .HasForeignKey(image => image.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -80,11 +84,9 @@ namespace QPET.Data
                 .HasForeignKey(enquiry => enquiry.BranchId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Enquiry>()
-                .HasOne(enquiry => enquiry.EnquiryStatus)
-                .WithMany(status => status.Enquiries)
-                .HasForeignKey(enquiry => enquiry.EnquiryStatusId)
-                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<EnquiryAttachment>()
+                .HasKey(attachment => attachment.AttachmentId);
 
             builder.Entity<EnquiryAttachment>()
                 .HasOne(attachment => attachment.Enquiry)
@@ -97,16 +99,6 @@ namespace QPET.Data
                 .WithMany(branch => branch.Reviews)
                 .HasForeignKey(review => review.BranchId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<Review>()
-                .HasOne(review => review.Customer)
-                .WithMany(customer => customer.Reviews)
-                .HasForeignKey(review => review.CustomerId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            builder.Entity<EnquiryStatus>()
-                .HasIndex(status => status.StatusName)
-                .IsUnique();
 
             builder.Entity<Branch>().HasData(
     new Branch
@@ -142,19 +134,19 @@ namespace QPET.Data
                 {
                     CategoryId = 1,
                     CategoryName = "Bottles",
-                    Description = "PET bottle packaging solutions."
+                    CategoryDescription = "PET bottle packaging solutions."
                 },
                 new Category
                 {
                     CategoryId = 2,
                     CategoryName = "Jars",
-                    Description = "PET jar packaging solutions."
+                    CategoryDescription = "PET jar packaging solutions."
                 },
                 new Category
                 {
                     CategoryId = 3,
                     CategoryName = "Preforms",
-                    Description = "PET preforms for packaging manufacturing."
+                    CategoryDescription = "PET preforms for packaging manufacturing."
                 });
 
             builder.Entity<SubCategory>().HasData(
@@ -187,28 +179,6 @@ namespace QPET.Data
                     SubCategoryId = 5,
                     CategoryId = 3,
                     SubCategoryName = "Standard Preforms"
-                });
-
-            builder.Entity<EnquiryStatus>().HasData(
-                new EnquiryStatus
-                {
-                    EnquiryStatusId = 1,
-                    StatusName = "New"
-                },
-                new EnquiryStatus
-                {
-                    EnquiryStatusId = 2,
-                    StatusName = "In Progress"
-                },
-                new EnquiryStatus
-                {
-                    EnquiryStatusId = 3,
-                    StatusName = "Resolved"
-                },
-                new EnquiryStatus
-                {
-                    EnquiryStatusId = 4,
-                    StatusName = "Closed"
                 });
         }
     }

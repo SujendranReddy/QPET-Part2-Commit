@@ -1,6 +1,4 @@
-﻿using QPET.Models;
-
-namespace QPET.Domain.Entities
+﻿namespace QPET.Domain.Entities
 {
     public class Category
     {
@@ -8,9 +6,12 @@ namespace QPET.Domain.Entities
 
         public string CategoryName { get; set; } = string.Empty;
 
-        public string Description { get; set; } = string.Empty;
+        public string? CategoryDescription { get; set; }
 
         public ICollection<SubCategory> SubCategories { get; set; }
             = new List<SubCategory>();
+
+        public ICollection<Product> Products { get; set; }
+            = new List<Product>();
     }
 }

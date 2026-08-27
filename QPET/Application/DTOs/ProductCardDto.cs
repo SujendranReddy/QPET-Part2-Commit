@@ -1,6 +1,6 @@
-﻿namespace QPET.Domain.Entities
+﻿namespace QPET.Application.DTOs
 {
-    public class Product
+    public class ProductCardDto
     {
         public int ProductId { get; set; }
 
@@ -16,13 +16,6 @@
 
         public string Description { get; set; } = string.Empty;
 
-        public bool IsActive { get; set; } = true;
-
-        public Category Category { get; set; } = null!;
-
-        public SubCategory SubCategory { get; set; } = null!;
-
-        public ICollection<ProductImage> ProductImages { get; set; }
-            = new List<ProductImage>();
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }
